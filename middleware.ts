@@ -51,10 +51,11 @@ export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
   const supabase = createMiddlewareClient(request, response);
 
+  // Usamos .ilike para buscar sin importar si escribieron mayúsculas o minúsculas
   const { data: link, error } = await supabase
     .from("links")
     .select("id, original_url, expires_at")
-    .eq("code", code)
+    .ilike("code", code)
     .maybeSingle();
 
   if (error || !link) {
