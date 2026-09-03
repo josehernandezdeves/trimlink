@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 interface Props {
@@ -9,34 +9,34 @@ interface Props {
   };
 }
 
-export async function GET(request: NextRequest, props: Props) {
-  // Aceptar params tanto si es promesa (Next.js 15) como si es objeto directo
+export default async function ShortLinkPage(props: Props) {
   const resolvedParams = await props.params;
   const alias = resolvedParams.alias;
 
   if (!alias || alias === "favicon.ico") {
-    return new NextResponse("Not found", { status: 404 });
+    redirect("/link-invalid");
   }
 
   const supabase = createClient();
 
-  // Usamos .ilike para buscar sin importar si escribieron mayúsculas o minúsculas
+  // Buscar el enlace en Supabase (insensible a mayúsculas/minúsculas)
   const { data: link, error } = await supabase
     .from("links")
     .select("id, original_url, clicks_count")
     .ilike("code", alias)
     .single();
 
+  // Si no existe, mandar a la página de enlace inválido
   if (error || !link) {
-    return NextResponse.redirect(new URL("/link-invalid", request.url));
+    redirect("/link-invalid");
   }
 
-  // Incrementar el contador de clics
+  // Incrementar el contador de clics de forma segura
   await supabase
     .from("links")
     .update({ clicks_count: (link.clicks_count || 0) + 1 })
     .eq("id", link.id);
 
-  // Redirigir a la URL original de destino
-  return NextResponse.redirect(link.original_url);
+  // Redirigir a la URL de destino original
+  redirect(link.original_url);
 }
